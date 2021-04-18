@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Goods {
+public class Food {
 
   private float price;
   private String imgUrl;

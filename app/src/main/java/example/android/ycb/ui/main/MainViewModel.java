@@ -1,14 +1,12 @@
 package example.android.ycb.ui.main;
 
+import android.accounts.NetworkErrorException;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
-import example.android.ycb.biz.GoodsService;
 import example.android.ycb.biz.YcbContext;
-import example.android.ycb.biz.model.Goods;
-import example.android.ycb.biz.model.Goods.FilterOptions;
+import example.android.ycb.biz.model.Rate;
+import example.android.ycb.biz.presenter.OrderPresenter;
 import io.reactivex.schedulers.Schedulers;
-import java.util.EnumSet;
-import java.util.List;
 import lombok.CustomLog;
 import lombok.Getter;
 
@@ -16,22 +14,32 @@ import lombok.Getter;
 public class MainViewModel extends ViewModel {
 
   @Getter
-  private final MutableLiveData<List<Goods>> goodsListData = new MutableLiveData<>();
-  private final GoodsService goodsService;
+  private final MutableLiveData<Rate.Result> rateResData = new MutableLiveData<>();
+  @Getter
+  private final MutableLiveData<Boolean> isNetworkErrorData = new MutableLiveData<>();
+  private final OrderPresenter orderPresenter;
 
   public MainViewModel(YcbContext context) {
-    this.goodsService = context.getGoodsService();
+    this.orderPresenter = new OrderPresenter(
+        context.getAndroidContext(),
+        context.getOrderService(),
+        context.getNetworkStateManager());
   }
 
-  private void requestGoodsList() {
-    log.debug("getGoodsList: %s", goodsService);
-    goodsService.getGoodsList(EnumSet.of(FilterOptions.Distance))
+  private void publishRateForOrder() {
+    log.debug("publishRateForOrder: %s", orderPresenter);
+    orderPresenter.publishRateForOrder("123", new Rate(3, "Nice~"))
         .subscribeOn(Schedulers.io())
-        .subscribe(goodsListData::postValue,
-            throwable -> log.error("getGoodsList err: %s", throwable.getMessage()));
+        .subscribe(rateResData::postValue, throwable -> {
+          if (throwable instanceof NetworkErrorException) {
+            isNetworkErrorData.postValue(true);
+          } else {
+            log.error("publishRateForOrder: %s", throwable.getMessage());
+          }
+        });
   }
 
   public void start() {
-    requestGoodsList();
+    publishRateForOrder();
   }
 }
